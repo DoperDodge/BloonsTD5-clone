@@ -191,6 +191,20 @@ const Render = {
     const showRange = opts.showRange;
     const valid = opts.valid !== false;
 
+    // Muzzle flash
+    if (!isPlacement && t.flashTimer && t.flashTimer > 0) {
+      ctx.save();
+      const fx = t.isAircraft ? (t.aircraftX || t.x) : t.x;
+      const fy = t.isAircraft ? (t.aircraftY || t.y) : t.y;
+      ctx.translate(fx, fy);
+      ctx.rotate(t.angle || 0);
+      ctx.fillStyle = 'rgba(255, 240, 100, ' + (t.flashTimer * 8) + ')';
+      ctx.beginPath();
+      ctx.arc(t.radius + 6, 0, 8 * t.flashTimer * 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     if (showRange) {
       ctx.save();
       ctx.fillStyle = valid ? 'rgba(255,255,255,0.18)' : 'rgba(255,0,0,0.18)';
@@ -301,24 +315,48 @@ const Render = {
 
   drawDart(t, tier, ang) {
     const ctx = this.ctx;
-    this.drawMonkey(16);
-    // Dart in hand
+    const topT = t.upgrades ? t.upgrades.top : 0;
+    const botT = t.upgrades ? t.upgrades.bot : 0;
+    // Top path tier 3+ becomes a catapult-like turret
+    if (topT >= 3) {
+      ctx.save();
+      ctx.rotate(ang);
+      ctx.fillStyle = '#7c2d12';
+      ctx.fillRect(-14, -4, 16, 8);
+      ctx.fillStyle = '#a16207';
+      ctx.beginPath();
+      ctx.moveTo(2, 0); ctx.lineTo(20, -14); ctx.lineTo(20, 14); ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(18, 0, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      this.drawUpgradePips(t);
+      return;
+    }
+    const bodyColor = botT >= 3 ? '#dc2626' : '#8b4513';
+    this.drawMonkey(16, bodyColor);
     ctx.save();
     ctx.rotate(ang);
     ctx.fillStyle = '#374151';
     ctx.fillRect(8, -1.5, 18, 3);
-    ctx.fillStyle = '#fbbf24';
+    ctx.fillStyle = botT >= 2 ? '#dc2626' : '#fbbf24';
     ctx.beginPath();
     ctx.moveTo(26, 0);
     ctx.lineTo(20, -4);
     ctx.lineTo(20, 4);
     ctx.closePath();
     ctx.fill();
-    // Fletching
     ctx.fillStyle = '#dc2626';
     ctx.fillRect(8, -3, 3, 6);
+    // Second dart for triple
+    if (botT >= 3) {
+      ctx.fillStyle = '#374151';
+      ctx.fillRect(-6, -10, 14, 2);
+      ctx.fillRect(-6, 8, 14, 2);
+    }
     ctx.restore();
-    // Upgrade indicators
     this.drawUpgradePips(t);
   },
 
@@ -653,7 +691,44 @@ const Render = {
 
   drawSuperMonkey(t, tier, ang) {
     const ctx = this.ctx;
-    // Cape
+    const topT = t.upgrades ? t.upgrades.top : 0;
+    const botT = t.upgrades ? t.upgrades.bot : 0;
+    // Sun temple at top tier 4
+    if (topT >= 4) {
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.moveTo(0, -30); ctx.lineTo(-26, 0); ctx.lineTo(-22, 22); ctx.lineTo(22, 22); ctx.lineTo(26, 0); ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#a16207';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Rays
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 18, Math.sin(a) * 18);
+        ctx.lineTo(Math.cos(a) * 32, Math.sin(a) * 32);
+        ctx.lineTo(Math.cos(a + 0.2) * 18, Math.sin(a + 0.2) * 18);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Central monkey
+      this.drawMonkey(10, '#dc2626');
+      this.drawUpgradePips(t);
+      return;
+    }
+    // Sun god glow
+    if (topT >= 3) {
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 30);
+      grad.addColorStop(0, '#fde047');
+      grad.addColorStop(0.6, 'rgba(251, 191, 36, 0.5)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.fillStyle = '#dc2626';
     ctx.beginPath();
     ctx.moveTo(-14, 0);
@@ -663,25 +738,22 @@ const Render = {
     ctx.lineTo(14, 0);
     ctx.closePath();
     ctx.fill();
-    this.drawMonkey(16, '#dc2626', '#d4a574');
-    // Mask
-    ctx.fillStyle = '#dc2626';
+    const bodyC = botT >= 3 ? '#0ea5e9' : '#dc2626';
+    this.drawMonkey(16, bodyC, '#d4a574');
+    ctx.fillStyle = bodyC;
     ctx.fillRect(-12, -6, 24, 6);
-    // Eye holes
     ctx.fillStyle = '#000';
     ctx.beginPath();
     ctx.arc(-5, -3, 3, 0, Math.PI * 2);
     ctx.arc(5, -3, 3, 0, Math.PI * 2);
     ctx.fill();
-    // Glowing eyes if upgraded
-    if (tier >= 2) {
-      ctx.fillStyle = '#fbbf24';
+    if (topT >= 1 || botT >= 1) {
+      ctx.fillStyle = topT >= 2 ? '#fde047' : '#fbbf24';
       ctx.beginPath();
       ctx.arc(-5, -3, 1.5, 0, Math.PI * 2);
       ctx.arc(5, -3, 1.5, 0, Math.PI * 2);
       ctx.fill();
     }
-    // S emblem
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 10px sans-serif';
     ctx.textAlign = 'center';

@@ -187,6 +187,9 @@ const UI = {
 
       grid.appendChild(card);
 
+      // Tooltip on hover
+      card.title = `${def.name}\n${def.description || ''}\nCost: $${Game.towerCost ? Game.towerCost(key) : def.cost}\n${def.placeable === 'water' ? 'Place on water' : 'Place on land'}`;
+
       // Draw the tower into the canvas
       this.drawTowerPreview(canvas, key);
 
