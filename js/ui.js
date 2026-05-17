@@ -59,6 +59,10 @@ const UI = {
       this.showScreen('menu');
       Audio.click();
     });
+    document.getElementById('audioBtn').addEventListener('click', () => {
+      Audio.enabled = !Audio.enabled;
+      document.getElementById('audioBtn').innerHTML = Audio.enabled ? '&#128266;' : '&#128263;';
+    });
     document.getElementById('ti_sell').addEventListener('click', () => {
       if (Game.selectedTower) Game.sellTower(Game.selectedTower);
       this.hideTowerInfo();
