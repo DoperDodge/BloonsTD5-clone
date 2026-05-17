@@ -572,7 +572,6 @@ function upgradeTower(t, path) {
   const def = t.type.upgrades[path];
   const tier = t.upgrades[path];
   if (tier >= def.length) return false;
-  // Lock rule: if you've gotten tier 3+ on the other path, you cannot continue this path beyond tier 2
   const other = path === 'top' ? 'bot' : 'top';
   if (t.upgrades[other] >= 3 && tier >= 2) return false;
   const upg = def[tier];
@@ -581,9 +580,12 @@ function upgradeTower(t, path) {
   t.upgrades[path]++;
   t.investedCost += cost;
   t.sellRefund = Math.floor(t.investedCost * 0.7);
-  // Locking
   if (t.upgrades[path] >= 3) {
     t.locked[other] = true;
+  }
+  // If this upgrade granted an active ability, make it ready immediately
+  if (t.activeAbility && t.abilityCooldown === 0) {
+    t.abilityReady = true;
   }
   return cost;
 }

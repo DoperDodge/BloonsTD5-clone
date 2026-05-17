@@ -88,7 +88,7 @@ const UI = {
   handleAction(action) {
     Audio.click();
     Audio.resume();
-    if (action === 'play') this.showScreen('mapSelect');
+    if (action === 'play') { this.buildMapGrid(); this.showScreen('mapSelect'); }
     else if (action === 'howto') this.showScreen('howto');
     else if (action === 'credits') this.showScreen('credits');
     else if (action === 'backToMenu') this.showScreen('menu');
@@ -111,6 +111,7 @@ const UI = {
   buildMapGrid() {
     const grid = document.getElementById('mapGrid');
     grid.innerHTML = '';
+    const stats = Game.loadStats ? Game.loadStats() : {};
     for (const key of Maps._list) {
       const map = Maps[key];
       const tile = document.createElement('div');
@@ -123,6 +124,18 @@ const UI = {
       label.className = 'map-name';
       label.textContent = map.name + ' • ' + map.difficulty;
       tile.appendChild(label);
+      // Stats badge
+      const mapStats = stats[key];
+      if (mapStats) {
+        const totalWins = Object.values(mapStats).reduce((s, e) => s + (e.wins || 0), 0);
+        const bestRound = Math.max(0, ...Object.values(mapStats).map(e => e.bestRound || 0));
+        if (totalWins > 0 || bestRound > 0) {
+          const badge = document.createElement('div');
+          badge.style.cssText = 'font-size:10px;color:#cbd5e1;margin-top:2px;';
+          badge.textContent = `Wins: ${totalWins} • Best: R${bestRound}`;
+          tile.appendChild(badge);
+        }
+      }
       grid.appendChild(tile);
       tile.addEventListener('click', () => {
         document.querySelectorAll('.map-tile').forEach(t => t.classList.remove('selected'));
@@ -130,7 +143,6 @@ const UI = {
         this.selectedMap = key;
         Audio.click();
       });
-      // Draw preview
       this.drawMapPreview(canvas, map);
     }
   },
@@ -247,6 +259,9 @@ const UI = {
     } else {
       startBtn.textContent = 'START R' + (Game.round + 1);
       startBtn.style.opacity = 1;
+      // Preview tooltip for next round
+      const preview = this.roundPreviewText(Game.round);
+      startBtn.title = 'Next round: ' + preview;
     }
     if (Game.selectedTower) this.updateTowerInfo();
   },
@@ -360,11 +375,14 @@ const UI = {
     for (const path of ['top', 'bot']) {
       const def = t.type.upgrades[path];
       const tier = t.upgrades[path];
+      const other = path === 'top' ? 'bot' : 'top';
+      const isPathLocked = t.upgrades[other] >= 3 && tier < 3;
       const wrap = document.createElement('div');
       wrap.className = 'upgrade-path';
+      if (isPathLocked) wrap.style.opacity = '0.55';
       const title = document.createElement('div');
       title.className = 'path-title';
-      title.textContent = path === 'top' ? 'PATH A' : 'PATH B';
+      title.textContent = (path === 'top' ? 'PATH A' : 'PATH B') + (isPathLocked ? ' (LOCKED)' : '');
       wrap.appendChild(title);
 
       const next = nextUpgrade(t, path);
@@ -456,6 +474,16 @@ const UI = {
     }
 
     document.getElementById('ti_target').textContent = 'Target: ' + targets[t.targetMode];
+  },
+
+  roundPreviewText(roundIdx) {
+    const groups = getRound(roundIdx);
+    const counts = {};
+    for (const g of groups) {
+      const key = g.type + (g.camo ? '/camo' : '') + (g.regrow ? '/regrow' : '') + (g.fortified ? '/fortified' : '');
+      counts[key] = (counts[key] || 0) + g.count;
+    }
+    return Object.entries(counts).map(([k, n]) => `${n}x ${k}`).join(', ');
   },
 
   showOverlay(title, text) {

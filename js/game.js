@@ -297,12 +297,14 @@ const Game = {
   victory() {
     this.state = 'victory';
     Audio.victory();
+    this.saveStats(true);
     UI.showOverlay('VICTORY!', `You popped ${this.totalPops} balloons across ${this.round} rounds.`);
   },
 
   defeat() {
     this.state = 'defeat';
     Audio.defeat();
+    this.saveStats(false);
     UI.showOverlay('DEFEAT!', `The balloons won. You made it to round ${this.round + 1}.`);
   },
 
@@ -1109,5 +1111,31 @@ const Game = {
       if (b.pathDist > bestD) { bestD = b.pathDist; best = b; }
     }
     return best;
+  },
+
+  saveStats(won) {
+    try {
+      const key = 'monkeyDefenseStats';
+      const stats = JSON.parse(localStorage.getItem(key) || '{}');
+      const mapKey = Object.keys(Maps).find(k => Maps[k] === this.map);
+      stats[mapKey] = stats[mapKey] || {};
+      stats[mapKey][this.difficulty] = stats[mapKey][this.difficulty] || {};
+      const entry = stats[mapKey][this.difficulty];
+      if (won) {
+        entry.wins = (entry.wins || 0) + 1;
+        entry.bestRound = Math.max(entry.bestRound || 0, this.round);
+      } else {
+        entry.losses = (entry.losses || 0) + 1;
+        entry.bestRound = Math.max(entry.bestRound || 0, this.round);
+      }
+      entry.totalPops = (entry.totalPops || 0) + this.totalPops;
+      localStorage.setItem(key, JSON.stringify(stats));
+    } catch (e) {}
+  },
+
+  loadStats() {
+    try {
+      return JSON.parse(localStorage.getItem('monkeyDefenseStats') || '{}');
+    } catch (e) { return {}; }
   }
 };
